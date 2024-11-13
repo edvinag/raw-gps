@@ -2,9 +2,8 @@ name: PlatformIO CI
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    branches:
+      - '*'
 
 permissions:
   contents: write  # Allows writing to repository contents, including creating releases
@@ -40,16 +39,29 @@ jobs:
         run: |
           zip -r raw-gps-build-v1.0.${{ github.run_number }}.zip .pio/build/wemos_d1_mini32
 
+      - name: Determine Tag, Release Name, and Draft Status
+        id: tag_name
+        run: |
+          if [[ "${{ github.ref }}" == refs/heads/main ]]; then
+            echo "TAG_NAME=v1.0.${{ github.run_number }}" >> $GITHUB_ENV
+            echo "RELEASE_NAME=Release v1.0.${{ github.run_number }}" >> $GITHUB_ENV
+            echo "DRAFT=false" >> $GITHUB_ENV
+          else
+            echo "TAG_NAME=feature-${{ github.run_number }}" >> $GITHUB_ENV
+            echo "RELEASE_NAME=Feature Branch Build ${{ github.run_number }}" >> $GITHUB_ENV
+            echo "DRAFT=true" >> $GITHUB_ENV
+          fi
+
       - name: Create GitHub Release
         id: create_release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: v1.0.${{ github.run_number }}
-          release_name: "Release v1.0.${{ github.run_number }}"
-          draft: false
-          prerelease: false
+          tag_name: ${{ env.TAG_NAME }}
+          release_name: ${{ env.RELEASE_NAME }}
+          draft: ${{ env.DRAFT }}
+          prerelease: false  # Optional: Set to true if needed for feature builds
 
       - name: Set Upload URL to Environment File
         if: ${{ steps.create_release.outputs.upload_url != '' }}
