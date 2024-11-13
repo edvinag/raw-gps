@@ -17,14 +17,14 @@ jobs:
 
     strategy:
       matrix:
-        board: [ wemos_d1_mini32 ]  # List other boards here if you want to build for multiple
+        board: [wemos_d1_mini32]  # Add other boards here if needed for multi-environment builds
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: '3.8'
 
@@ -34,27 +34,27 @@ jobs:
           pip install platformio
 
       - name: Build project
-        run: |
-          platformio run --environment ${{ matrix.board }}
+        run: platformio run --environment ${{ matrix.board }}
 
-      # Compress the build output folder into raw-gps.zip
-      - name: Archive Build Artifacts
-        run: |
-          zip -r raw-gps-build-${{ github.ref_name }}-v1.0.${{ github.run_number }}.zip .pio/build/wemos_d1_mini32
+
 
       - name: Determine Tag, Release Name, and Draft Status
-        id: tag_name
+        id: release_info
         run: |
-          if [[ "${{ github.ref }}" == refs/heads/main ]]; then
-            echo "TAG_NAME=v1.0.${{ github.run_number }}" >> $GITHUB_ENV
-            echo "RELEASE_NAME=Release v1.0.${{ github.run_number }}" >> $GITHUB_ENV
+          echo "TAG_NAME=${{ github.ref_name }}-v1.0.${{ github.run_number }}-g${{ github.sha }}" >> $GITHUB_ENV
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "RELEASE_NAME=Release ${{ env.TAG_NAME }}" >> $GITHUB_ENV
             echo "DRAFT=false" >> $GITHUB_ENV
           else
-            echo "TAG_NAME=feature-${{ github.ref_name }}-v1.0.${{ github.run_number }}" >> $GITHUB_ENV
-            echo "RELEASE_NAME=feature-${{ github.ref_name }}-v1.0.${{ github.run_number }}" >> $GITHUB_ENV
+            echo "RELEASE_NAME=Feature ${{ env.TAG_NAME }}" >> $GITHUB_ENV
             echo "DRAFT=true" >> $GITHUB_ENV
           fi
 
+      - name: Archive Build Artifacts
+        if: success()
+        run: |
+          zip -r raw-gps-build-${{ env.TAG_NAME }}.zip .pio/build/${{ matrix.board }}
+          
       - name: Create GitHub Release
         id: create_release
         uses: actions/create-release@v1
@@ -64,7 +64,7 @@ jobs:
           tag_name: ${{ env.TAG_NAME }}
           release_name: ${{ env.RELEASE_NAME }}
           draft: ${{ env.DRAFT }}
-          prerelease: false  # Optional: Set to true if needed for feature builds
+          prerelease: ${{ env.DRAFT }}
 
       - name: Set Upload URL to Environment File
         if: ${{ steps.create_release.outputs.upload_url != '' }}
@@ -76,6 +76,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ env.UPLOAD_URL }}
-          asset_path: "raw-gps-build-${{ github.ref_name }}-v1.0.${{ github.run_number }}.zip"
-          asset_name: "raw-gps-build-${{ github.ref_name }}-v1.0.${{ github.run_number }}.zip"
+          asset_path: "raw-gps-build-${{ env.TAG_NAME }}.zip"
+          asset_name: "raw-gps-build-${{ env.TAG_NAME }}.zip"
           asset_content_type: application/zip
