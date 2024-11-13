@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - '*'
+  pull_request:
+    branches:
+      - '*'
 
 permissions:
   contents: write  # Allows writing to repository contents, including creating releases
