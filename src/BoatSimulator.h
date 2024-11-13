@@ -27,7 +27,7 @@ extern float metersPerDegreeLon;           // Calculated based on latitude
 extern unsigned long lastUpdateTime;
 const unsigned long updateInterval = 50; // 50 ms
 
-// Function declarations
+// Function declarations for BoatSimulator.cpp
 void setupBoatSimulator();
 void updateBoatSimulator();
 void outputNMEA();
