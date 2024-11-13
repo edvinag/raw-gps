@@ -40,7 +40,7 @@ jobs:
       # Compress the build output folder into raw-gps.zip
       - name: Archive Build Artifacts
         run: |
-          zip -r raw-gps-build-v1.0.${{ github.run_number }}.zip .pio/build/wemos_d1_mini32
+          zip -r raw-gps-build-${{ github.ref_name }}-v1.0.${{ github.run_number }}.zip .pio/build/wemos_d1_mini32
 
       - name: Determine Tag, Release Name, and Draft Status
         id: tag_name
@@ -50,8 +50,8 @@ jobs:
             echo "RELEASE_NAME=Release v1.0.${{ github.run_number }}" >> $GITHUB_ENV
             echo "DRAFT=false" >> $GITHUB_ENV
           else
-            echo "TAG_NAME=feature-${{ github.run_number }}" >> $GITHUB_ENV
-            echo "RELEASE_NAME=Feature Branch Build ${{ github.run_number }}" >> $GITHUB_ENV
+            echo "TAG_NAME=feature-${{ github.ref_name }}-v1.0.${{ github.run_number }}" >> $GITHUB_ENV
+            echo "RELEASE_NAME=feature-${{ github.ref_name }}-v1.0.${{ github.run_number }}" >> $GITHUB_ENV
             echo "DRAFT=true" >> $GITHUB_ENV
           fi
 
@@ -76,6 +76,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ env.UPLOAD_URL }}
-          asset_path: "raw-gps-build-v1.0.${{ github.run_number }}.zip"
-          asset_name: "raw-gps-build-v1.0.${{ github.run_number }}.zip"
+          asset_path: "raw-gps-build-${{ github.ref_name }}-v1.0.${{ github.run_number }}.zip"
+          asset_name: "raw-gps-build-${{ github.ref_name }}-v1.0.${{ github.run_number }}.zip"
           asset_content_type: application/zip
