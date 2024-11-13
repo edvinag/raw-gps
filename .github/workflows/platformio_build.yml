@@ -12,7 +12,7 @@ jobs:
 
     strategy:
       matrix:
-        board: [ esp32dev ]  # List other boards here if you want to build for multiple
+        board: [ wemos_d1_mini32 ]  # List other boards here if you want to build for multiple
 
     steps:
       - name: Checkout code
