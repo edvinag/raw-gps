@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: write  # Allows writing to repository contents, including creating releases
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -43,12 +46,16 @@ jobs:
           draft: false
           prerelease: false
 
+      - name: Set Upload URL to Environment File
+        if: ${{ steps.create_release.outputs.upload_url != '' }}
+        run: echo "UPLOAD_URL=${{ steps.create_release.outputs.upload_url }}" >> $GITHUB_ENV
+
       - name: Upload Build Artifacts to Release
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          upload_url: ${{ env.UPLOAD_URL }}
           asset_path: ".pio/build/wemos_d1_mini32/firmware.bin"
           asset_name: "firmware.bin"
           asset_content_type: application/octet-stream
