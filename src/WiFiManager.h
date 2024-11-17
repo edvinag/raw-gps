@@ -2,38 +2,66 @@
 #define WIFI_MANAGER_H
 
 #include <WiFi.h>
-#include <ESPmDNS.h>
+
+// Structure to hold network configuration
+struct Network {
+    const char* ssid;
+    const char* password;
+    IPAddress local_IP;
+    IPAddress gateway;
+    IPAddress subnet;
+};
 
 class WiFiManager {
 public:
-    void setup(const char* ssid, const char* password, const char* host) {
-        WiFi.begin(ssid, password);
-        Serial.println("");
+    WiFiManager(Network* setups, int size) : wifiSetups(setups), setupCount(size) {}
 
-        // Wait for connection
-        while (WiFi.status() != WL_CONNECTED) {
-            delay(500);
-            Serial.print(".");
-        }
-        Serial.println("");
-        Serial.print("Connected to ");
-        Serial.println(ssid);
-        Serial.print("IP address: ");
-        Serial.println(WiFi.localIP());
+    void setup() {
+        Serial.begin(115200);
+        Serial.println("Booting");
+        WiFi.mode(WIFI_STA);
 
-        // mDNS setup
-        if (!MDNS.begin(host)) {
-            Serial.println("Error setting up MDNS responder!");
-            while (1) {
-                delay(1000);
+        // Scan for networks
+        Serial.print("Scan start ... ");
+        int n = WiFi.scanNetworks();
+        int wifiIndex = 0; // Default to the first configuration
+        Serial.print(n);
+        Serial.println(" network(s) found:");
+        for (int i = 0; i < n; i++) {
+            Serial.println(WiFi.SSID(i));
+            for (int j = 0; j < setupCount; j++) {
+                if (WiFi.SSID(i) == wifiSetups[j].ssid) {
+                    Serial.println(" - Found SSID");
+                    wifiIndex = j; // Match found
+                }
             }
         }
-        Serial.println("mDNS responder started");
+
+        // Configure WiFi
+        if (!WiFi.config(wifiSetups[wifiIndex].local_IP, wifiSetups[wifiIndex].gateway, wifiSetups[wifiIndex].subnet)) {
+            Serial.println("STA Failed to configure");
+        }
+
+        // Connect to WiFi
+        Serial.print("Connecting to ");
+        Serial.println(wifiSetups[wifiIndex].ssid);
+        WiFi.begin(wifiSetups[wifiIndex].ssid, wifiSetups[wifiIndex].password);
+        while (WiFi.waitForConnectResult() != WL_CONNECTED) {
+            Serial.println("Connection Failed! Rebooting...");
+            delay(5000);
+            ESP.restart();
+        }
+        Serial.println("Connected successfully!");
+        Serial.println("Local IP: " + WiFi.localIP().toString());
     }
 
-    IPAddress getLocalIP() {
-        return WiFi.localIP();
+    String getLocalIP() {
+        return WiFi.localIP().toString();
     }
+
+private:
+    Network* wifiSetups;             // Array of network configurations
+    int setupCount;                  // Number of networks in the array
 };
 
 #endif

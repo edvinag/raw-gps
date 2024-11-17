@@ -2,6 +2,7 @@
 #include "WiFiManager.h"
 #include "OTAUpdateServer.h"
 #include <WebServer.h>
+#include <wifi-setup.h>
 
 // WiFi credentials
 const char* ssid = "***";
@@ -11,7 +12,7 @@ const char* password = "***";
 const char* host = "esp32-raw-gps";
 
 // Create objects
-WiFiManager wifiManager;
+WiFiManager wifiManager(wifi_setup, sizeOfWifiSetup);;
 WebServer server(80); // Shared WebServer object
 OTAUpdateServer otaUpdateServer(server);
 
@@ -19,7 +20,7 @@ void setup() {
     Serial.begin(115200);
 
     // Setup WiFi
-    wifiManager.setup(ssid, password, host);
+    wifiManager.setup();
 
     // Setup OTA server
     otaUpdateServer.setup();
