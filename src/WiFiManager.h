@@ -2,6 +2,7 @@
 #define WIFI_MANAGER_H
 
 #include <WiFi.h>
+#include <ESPmDNS.h>
 
 // Structure to hold network configuration
 struct Network {
@@ -16,7 +17,7 @@ class WiFiManager {
 public:
     WiFiManager(Network* setups, int size) : wifiSetups(setups), setupCount(size) {}
 
-    void setup() {
+    void setup(const char* mdnsName) {
         Serial.begin(115200);
         Serial.println("Booting");
         WiFi.mode(WIFI_STA);
@@ -53,6 +54,9 @@ public:
         }
         Serial.println("Connected successfully!");
         Serial.println("Local IP: " + WiFi.localIP().toString());
+
+        // Setup mDNS
+        setupMDNS(mdnsName);
     }
 
     String getLocalIP() {
@@ -62,6 +66,16 @@ public:
 private:
     Network* wifiSetups;             // Array of network configurations
     int setupCount;                  // Number of networks in the array
+
+    void setupMDNS(const char* mdnsName) {
+        if (!MDNS.begin(mdnsName)) {
+            Serial.println("Error setting up mDNS responder!");
+            while (1) {
+                delay(1000); // Wait indefinitely in case of mDNS failure
+            }
+        }
+        Serial.printf("mDNS responder started: http://%s.local\n", mdnsName);
+    }
 };
 
 #endif
