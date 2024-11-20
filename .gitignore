@@ -6,3 +6,4 @@
 src/Secrets.h
 *.der
 *.pem
+src/https/*.*
