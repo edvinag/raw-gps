@@ -4,30 +4,29 @@
 #include <WebServer.h>
 #include <Update.h>
 
-class OTAUpdateServer {
+class OTAUpdateServer
+{
 public:
-    OTAUpdateServer(WebServer& sharedServer) : server(sharedServer) {}
-
-    void setup() {
+    OTAUpdateServer(WebServer &sharedServer) : server(sharedServer)
+    {
         // Setup routes
-        server.on("/", HTTP_GET, [this]() {
+        server.on("/", HTTP_GET, [this]()
+                  {
             server.sendHeader("Connection", "close");
-            server.send(200, "text/html", serverIndex);
-        });
+            server.send(200, "text/html", serverIndex); });
 
-        server.on("/update", HTTP_POST, [this]() {
+        server.on("/update", HTTP_POST, [this]()
+                  {
             server.sendHeader("Connection", "close");
             server.send(200, "text/plain", (Update.hasError()) ? "FAIL" : "OK");
-            ESP.restart();
-        }, [this]() {
-            handleUpload();
-        });
+            ESP.restart(); }, [this]()
+                  { handleUpload(); });
 
         Serial.println("OTA server routes added");
     }
 
 private:
-    WebServer& server; // Reference to the shared WebServer
+    WebServer &server; // Reference to the shared WebServer
 
     String style =
         "<style>#file-input,input{width:100%;height:44px;border-radius:4px;margin:10px auto;font-size:15px}"
@@ -79,23 +78,35 @@ private:
         "}"
         "});"
         "});"
-        "</script>" + style;
+        "</script>" +
+        style;
 
-    void handleUpload() {
-        HTTPUpload& upload = server.upload();
-        if (upload.status == UPLOAD_FILE_START) {
+    void handleUpload()
+    {
+        HTTPUpload &upload = server.upload();
+        if (upload.status == UPLOAD_FILE_START)
+        {
             Serial.printf("Update: %s\n", upload.filename.c_str());
-            if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
+            if (!Update.begin(UPDATE_SIZE_UNKNOWN))
+            {
                 Update.printError(Serial);
             }
-        } else if (upload.status == UPLOAD_FILE_WRITE) {
-            if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
+        }
+        else if (upload.status == UPLOAD_FILE_WRITE)
+        {
+            if (Update.write(upload.buf, upload.currentSize) != upload.currentSize)
+            {
                 Update.printError(Serial);
             }
-        } else if (upload.status == UPLOAD_FILE_END) {
-            if (Update.end(true)) {
+        }
+        else if (upload.status == UPLOAD_FILE_END)
+        {
+            if (Update.end(true))
+            {
                 Serial.printf("Update Success: %u\nRebooting...\n", upload.totalSize);
-            } else {
+            }
+            else
+            {
                 Update.printError(Serial);
             }
         }

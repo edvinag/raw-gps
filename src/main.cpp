@@ -2,12 +2,12 @@
 #include "WiFiManager.h"
 #include "OTAUpdateServer.h"
 #include <ArduinoOTA.h>
-#include "OTA.h"
+#include "OTAHandler.h"
 #include <WebServer.h>
 #include <Secrets.h>
 #include "WebServer.h"
-
-
+#include "BoatSimulator.h"
+#include "GpsCheck.h"
 
 // OTA server configuration
 const char *host = "esp32-raw-gps";
@@ -18,10 +18,14 @@ const int enableOtaPin = 25; // Replace with the actual pin you are using
 unsigned long lastNMEATime = 0;
 
 // Create objects
-WiFiManager wifiManager(wifi_setup, sizeOfWifiSetup);
+WiFiManager wifiManager(wifiCredentials, sizeOfWifiCredentials);
 ;
 WebServer server(80); // Shared WebServer object
 OTAUpdateServer otaUpdateServer(server);
+OTAHandler otaHandler;
+GpsCheck gpsCheck;
+BoatSimulator boat(37.7749, -122.4194); // San Francisco coordinates
+
 bool otaEnabled = false; // Track OTA state
 
 void setup()
@@ -36,10 +40,7 @@ void setup()
     Serial.println("Enabling OTA mode...");
     // Setup WiFi
     wifiManager.setup(host);
-
-    // Setup OTA server
-    otaUpdateServer.setup();
-    otaSetup();
+    otaHandler.setup();
 
     // Start the shared server
     server.begin();
@@ -49,32 +50,43 @@ void setup()
   else
   {
     Serial.println("Enabling NMEA mode...");
-    Serial1.begin(9600, SERIAL_8N1, 16, 17);
+    // Serial1.begin(9600, SERIAL_8N1, 16, 17);
+    boat.setup();
+    // Serial2.begin(9600, SERIAL_8N1, 12, 13);
   }
 }
 
 void loop()
 {
-  if ((!otaEnabled && digitalRead(enableOtaPin) == HIGH) || (otaEnabled && digitalRead(enableOtaPin) == LOW)) // Restart ESP32 if OTA mode changes
+  if (digitalRead(enableOtaPin) == !otaEnabled) // Restart ESP32 if OTA mode changes
   {
     Serial.println("Restarting ESP32...");
     ESP.restart();
   }
 
+  gpsCheck.handle();
+
   unsigned long currentMillis = millis();
   if (otaEnabled) // Conditionally handle OTA server
   {
-    server.handleClient();
-    ArduinoOTA.handle();
+    if (!otaHandler.isRunning())
+    {
+      server.handleClient();
+    }
+    otaHandler.handle();
+    // ArduinoOTA.handle();
   }
-  else if (currentMillis - lastNMEATime >= 200) // Send NMEA data every 200ms
+  else
+  {
+    boat.update();
+  }
+  
+  if (currentMillis - lastNMEATime >= 1000) // Send NMEA data every 200ms
   {
     lastNMEATime = currentMillis;
-    Serial1.println("$GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47");
-  }
-  else // Delay to prevent high CPU usage
-  {
-    delay(10);
+    // Serial.println("Serial1: Sending NMEA data");
+    // outputNMEA();
+    gpsCheck.print();
   }
 }
 

@@ -5,7 +5,7 @@
 #include <ESPmDNS.h>
 
 // Structure to hold network configuration
-struct Network {
+struct WifiCredentials {
     const char* ssid;
     const char* password;
     IPAddress local_IP;
@@ -15,7 +15,7 @@ struct Network {
 
 class WiFiManager {
 public:
-    WiFiManager(Network* setups, int size) : wifiSetups(setups), setupCount(size) {}
+    WiFiManager(WifiCredentials* setups, int size) : wifiCredentials(setups), setupCount(size) {}
 
     void setup(const char* mdnsName) {
         Serial.begin(115200);
@@ -31,7 +31,7 @@ public:
         for (int i = 0; i < n; i++) {
             Serial.println(WiFi.SSID(i));
             for (int j = 0; j < setupCount; j++) {
-                if (WiFi.SSID(i) == wifiSetups[j].ssid) {
+                if (WiFi.SSID(i) == wifiCredentials[j].ssid) {
                     Serial.println(" - Found SSID");
                     wifiIndex = j; // Match found
                 }
@@ -39,14 +39,14 @@ public:
         }
 
         // Configure WiFi
-        if (!WiFi.config(wifiSetups[wifiIndex].local_IP, wifiSetups[wifiIndex].gateway, wifiSetups[wifiIndex].subnet)) {
+        if (!WiFi.config(wifiCredentials[wifiIndex].local_IP, wifiCredentials[wifiIndex].gateway, wifiCredentials[wifiIndex].subnet)) {
             Serial.println("STA Failed to configure");
         }
 
         // Connect to WiFi
         Serial.print("Connecting to ");
-        Serial.println(wifiSetups[wifiIndex].ssid);
-        WiFi.begin(wifiSetups[wifiIndex].ssid, wifiSetups[wifiIndex].password);
+        Serial.println(wifiCredentials[wifiIndex].ssid);
+        WiFi.begin(wifiCredentials[wifiIndex].ssid, wifiCredentials[wifiIndex].password);
         while (WiFi.waitForConnectResult() != WL_CONNECTED) {
             Serial.println("Connection Failed! Rebooting...");
             delay(5000);
@@ -64,7 +64,7 @@ public:
     }
 
 private:
-    Network* wifiSetups;             // Array of network configurations
+    WifiCredentials* wifiCredentials;             // Array of network configurations
     int setupCount;                  // Number of networks in the array
 
     void setupMDNS(const char* mdnsName) {
