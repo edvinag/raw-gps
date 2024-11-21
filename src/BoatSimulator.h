@@ -116,19 +116,29 @@ void BoatSimulator::outputNMEA() {
 
     String nmeaLatitude = convertToNMEA(latitude, "lat");
     String nmeaLongitude = convertToNMEA(longitude, "lon");
+    
+    // Construct GPRMC sentence
+    String rmc = "$GPRMC," + timestamp + ",A," + nmeaLatitude + "," + nmeaLongitude + "," +
+                 String(speedKnots, 1) + "," + String(headingDegrees, 2) + ",230924,,,A*";
 
+    rmc += calculateChecksum(rmc); // Append checksum
+    Serial1.print(rmc + "\r\n");   // Send GPRMC sentence
+    // Serial.println(rmc);           // Optionally log to Serial
+
+    //Construct a GGA sentence
     String gga = "$GPGGA," + timestamp + "," + nmeaLatitude + "," + nmeaLongitude + ",1,08,0.9,545.4,M,46.9,M,,*";
     gga += calculateChecksum(gga);
     Serial1.print(gga + "\r\n");
 
-    String vtg = "$GPVTG," + String(headingDegrees, 2) + ",T,,M," + String(speedKnots, 1) + ",N,,K*";
-    vtg += calculateChecksum(vtg);
-    Serial1.print(vtg + "\r\n");
-    Serial.println(vtg);
+    // //Construct a VTG sentence
+    // String vtg = "$GPVTG," + String(headingDegrees, 2) + ",T,,M," + String(speedKnots, 1) + ",N,,K*";
+    // vtg += calculateChecksum(vtg);
+    // Serial1.print(vtg + "\r\n");
+    // Serial.println(vtg);
 }
 
 String BoatSimulator::getTimestamp() {
-    unsigned long currentMillis = millis() + 1416233095; // UTC	Nov 21, 2024 14:04:37
+    unsigned long currentMillis = millis();
     unsigned long totalSeconds = currentMillis / 1000;
     unsigned long hours = (totalSeconds / 3600) % 24;
     unsigned long minutes = (totalSeconds / 60) % 60;
