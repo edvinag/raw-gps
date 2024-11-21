@@ -87,6 +87,7 @@ void loop()
     // Serial.println("Serial1: Sending NMEA data");
     // outputNMEA();
     gpsCheck.print();
+    boat.print();
   }
 }
 

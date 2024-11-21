@@ -7,8 +7,8 @@
 class BoatSimulator {
 private:
     // Pin definitions
-    const int rudderRightPin = 15;
-    const int rudderLeftPin = 16;
+    const int rudderRightPin = 18;
+    const int rudderLeftPin = 19;
 
     // Dynamic constants
     const float constantSpeed = 4.11556;  // Constant speed in m/s (8 knots)
@@ -47,6 +47,7 @@ public:
     void setup();
     void update();
     void outputNMEA();
+    void print();
 };
 
 // Implementation
@@ -117,12 +118,13 @@ void BoatSimulator::outputNMEA() {
     String nmeaLongitude = convertToNMEA(longitude, "lon");
 
     String gga = "$GPGGA," + timestamp + "," + nmeaLatitude + "," + nmeaLongitude + ",1,08,0.9,545.4,M,46.9,M,,*";
-    gga += "*" + calculateChecksum(gga);
+    gga += calculateChecksum(gga);
     Serial1.print(gga + "\r\n");
 
     String vtg = "$GPVTG," + String(headingDegrees, 2) + ",T,,M," + String(speedKnots, 1) + ",N,,K*";
-    vtg += "*" + calculateChecksum(vtg);
+    vtg += calculateChecksum(vtg);
     Serial1.print(vtg + "\r\n");
+    Serial.println(vtg);
 }
 
 String BoatSimulator::getTimestamp() {
@@ -151,6 +153,17 @@ String BoatSimulator::calculateChecksum(String sentence) {
     char checksumStr[3];
     sprintf(checksumStr, "%02X", checksum);
     return String(checksumStr);
+}
+
+void BoatSimulator::print() {
+    String output = "";
+    output += "Latitude: " + String(latitude, 6) + "\n";
+    output += "Longitude: " + String(longitude, 6) + "\n";
+    output += "Heading: " + String(heading, 6) + "\n";
+    output += "Angular Velocity: " + String(angularVelocity, 6) + "\n";
+    output += "X Position: " + String(xPosition, 6) + "\n";
+    output += "Y Position: " + String(yPosition, 6) + "\n";
+    Serial.println(output);
 }
 
 #endif // BOAT_SIMULATOR_H
