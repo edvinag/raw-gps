@@ -18,38 +18,37 @@ public:
     WiFiManager(WifiCredentials* setups, int size) : wifiCredentials(setups), setupCount(size) {}
 
     void setup(const char* mdnsName) {
-        Serial.begin(115200);
-        Serial.println("Booting");
-        WiFi.mode(WIFI_STA);
+        // Serial.begin(115200);
+        // WiFi.mode(WIFI_STA);
 
         // Scan for networks
-        Serial.print("Scan start ... ");
-        int n = WiFi.scanNetworks();
-        int wifiIndex = 0; // Default to the first configuration
-        Serial.print(n);
-        Serial.println(" network(s) found:");
-        for (int i = 0; i < n; i++) {
-            Serial.println(WiFi.SSID(i));
-            for (int j = 0; j < setupCount; j++) {
-                if (WiFi.SSID(i) == wifiCredentials[j].ssid) {
-                    Serial.println(" - Found SSID");
-                    wifiIndex = j; // Match found
-                }
-            }
-        }
+        // Serial.print("Scan start for WiFi... ");
+        // int n = WiFi.scanNetworks();
+        // int wifiIndex = 0; // Default to the first configuration
+        // Serial.print(n);
+        // Serial.println(" network(s) found:");
+        // for (int i = 0; i < n; i++) {
+        //     Serial.println(WiFi.SSID(i));
+        //     for (int j = 0; j < setupCount; j++) {
+        //         if (WiFi.SSID(i) == wifiCredentials[j].ssid) {
+        //             Serial.println(" - Found SSID");
+        //             wifiIndex = j; // Match found
+        //         }
+        //     }
+        // }
 
         // Configure WiFi
-        if (!WiFi.config(wifiCredentials[wifiIndex].local_IP, wifiCredentials[wifiIndex].gateway, wifiCredentials[wifiIndex].subnet)) {
-            Serial.println("STA Failed to configure");
-        }
-
+        // if (!WiFi.config(wifiCredentials[wifiIndex].local_IP, wifiCredentials[wifiIndex].gateway, wifiCredentials[wifiIndex].subnet)) {
+        //     Serial.println("STA Failed to configure");
+        // }
+        // delay(1000);
         // Connect to WiFi
         Serial.print("Connecting to ");
-        Serial.println(wifiCredentials[wifiIndex].ssid);
-        WiFi.begin(wifiCredentials[wifiIndex].ssid, wifiCredentials[wifiIndex].password);
+        // Serial.println(wifiCredentials[wifiIndex].ssid);
+        WiFi.begin("Connect", "hejhejhej");
         while (WiFi.waitForConnectResult() != WL_CONNECTED) {
             Serial.println("Connection Failed! Rebooting...");
-            delay(5000);
+            delay(100);
             ESP.restart();
         }
         Serial.println("Connected successfully!");

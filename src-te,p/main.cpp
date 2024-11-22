@@ -1,10 +1,10 @@
 #include <Arduino.h>
 #include "WiFiManager.h"
 #include "OTAUpdateServer.h"
-#include <ArduinoOTA.h>
-#include "OTAHandler.h"
+// #include <ArduinoOTA.h>
+// #include "OTAHandler.h"
 #include <WebServer.h>
-#include <Secrets.h>
+#include <Credentials.h>
 #include "WebServer.h"
 #include "BoatSimulator.h"
 #include "GpsCheck.h"
@@ -22,7 +22,7 @@ WiFiManager wifiManager(wifiCredentials, sizeOfWifiCredentials);
 ;
 WebServer server(80); // Shared WebServer object
 OTAUpdateServer otaUpdateServer(server);
-OTAHandler otaHandler;
+// OTAHandler otaHandler;
 GpsCheck gpsCheck;
 BoatSimulator boat(37.7749, -122.4194); // San Francisco coordinates
 
@@ -40,7 +40,7 @@ void setup()
     Serial.println("Enabling OTA mode...");
     // Setup WiFi
     wifiManager.setup(host);
-    otaHandler.setup();
+    // otaHandler.setup();
 
     // Start the shared server
     server.begin();
@@ -58,37 +58,42 @@ void setup()
 
 void loop()
 {
-  if (digitalRead(enableOtaPin) == !otaEnabled) // Restart ESP32 if OTA mode changes
-  {
-    Serial.println("Restarting ESP32...");
-    ESP.restart();
-  }
+  // if (otaHandler.isRunning())
+  // {
+  //   otaHandler.handle();
+  // }
+  // else
+  // {
 
-  gpsCheck.handle();
-
-  unsigned long currentMillis = millis();
-  if (otaEnabled) // Conditionally handle OTA server
-  {
-    if (!otaHandler.isRunning())
+    if (digitalRead(enableOtaPin) == !otaEnabled) // Restart ESP32 if OTA mode changes
     {
-      server.handleClient();
+      Serial.println("Restarting ESP32...");
+      ESP.restart();
     }
-    otaHandler.handle();
-    // ArduinoOTA.handle();
-  }
-  else
-  {
-    boat.update();
-  }
+
+    unsigned long currentMillis = millis();
+    if (otaEnabled) // Conditionally handle OTA server
+    {
+
+      server.handleClient();
+      // otaHandler.handle();
+    }
+    else
+    {
+      gpsCheck.handle();
+      boat.update();
+
+      if (currentMillis - lastNMEATime >= 1000) // Send NMEA data every 200ms
+      {
+        lastNMEATime = currentMillis;
+        // Serial.println("Serial1: Sending NMEA data");
+        // outputNMEA();
+        gpsCheck.print();
+        boat.print();
+      }
+    }
+    delay(1);
   
-  if (currentMillis - lastNMEATime >= 1000) // Send NMEA data every 200ms
-  {
-    lastNMEATime = currentMillis;
-    // Serial.println("Serial1: Sending NMEA data");
-    // outputNMEA();
-    gpsCheck.print();
-    boat.print();
-  }
 }
 
 // #include <Arduino.h>
