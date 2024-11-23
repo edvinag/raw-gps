@@ -39,9 +39,9 @@ private:
     String serverIndex =
         "<script src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>"
         "<form method='POST' action='#' enctype='multipart/form-data' id='upload_form'>"
-        "<input type='file' name='update' id='file' onchange='sub(this)' style=display:none>"
-        "<label id='file-input' for='file'>   Choose file...</label>"
-        "<input type='submit' class=btn value='Update'>"
+        "<input type='file' name='update' id='file' accept='.bin' onchange='sub(this)' style='display:none'>"
+        "<label id='file-input' for='file'>   Choose .bin file to update...</label>"
+        "<input type='submit' class='btn' value='Update'>"
         "<br><br>"
         "<div id='prg'></div>"
         "<br><div id='prgbar'><div id='bar'></div></div><br></form>"
