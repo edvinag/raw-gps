@@ -1,11 +1,10 @@
 #include <Arduino.h>
 #include "WiFiManager.h"
 #include "OTAUpdateServer.h"
-#include <ArduinoOTA.h>
-#include "OTAHandler.h"
+// #include <ArduinoOTA.h>
+// #include "OTAHandler.h"
 #include <WebServer.h>
-#include <Secrets.h>
-#include "WebServer.h"
+#include <Credentials.h>
 #include "BoatSimulator.h"
 #include "GpsCheck.h"
 
@@ -22,7 +21,7 @@ WiFiManager wifiManager(wifiCredentials, sizeOfWifiCredentials);
 ;
 WebServer server(80); // Shared WebServer object
 OTAUpdateServer otaUpdateServer(server);
-OTAHandler otaHandler;
+// OTAHandler otaHandler;
 GpsCheck gpsCheck;
 BoatSimulator boat(37.7749, -122.4194); // San Francisco coordinates
 
@@ -30,9 +29,12 @@ bool otaEnabled = false; // Track OTA state
 
 void setup()
 {
+  delay(1000);
   Serial.begin(115200);
+  pinMode(2, OUTPUT);
+  digitalWrite(2, HIGH); // Turn the LED on
 
-  // Setup GPIO pin mode
+  // // Setup GPIO pin mode
   pinMode(enableOtaPin, INPUT);
 
   if (digitalRead(enableOtaPin) == HIGH)
@@ -40,7 +42,8 @@ void setup()
     Serial.println("Enabling OTA mode...");
     // Setup WiFi
     wifiManager.setup(host);
-    otaHandler.setup();
+    otaUpdateServer.setup();
+    // otaHandler.setup();
 
     // Start the shared server
     server.begin();
@@ -58,36 +61,50 @@ void setup()
 
 void loop()
 {
-  if (digitalRead(enableOtaPin) == !otaEnabled) // Restart ESP32 if OTA mode changes
-  {
-    Serial.println("Restarting ESP32...");
-    ESP.restart();
-  }
+  digitalWrite(2, LOW); // Turn the LED on
 
-  gpsCheck.handle();
-
-  unsigned long currentMillis = millis();
-  if (otaEnabled) // Conditionally handle OTA server
+    //   server.handleClient();
+    // yield();
+    // delay(20);
+  if (otaUpdateServer.isOTAInProgress())
   {
-    if (!otaHandler.isRunning())
-    {
-      server.handleClient();
-    }
-    otaHandler.handle();
-    // ArduinoOTA.handle();
+    server.handleClient();
+    yield();
   }
   else
   {
-    boat.update();
-  }
-  
-  if (currentMillis - lastNMEATime >= 1000) // Send NMEA data every 200ms
-  {
-    lastNMEATime = currentMillis;
-    // Serial.println("Serial1: Sending NMEA data");
-    // outputNMEA();
-    gpsCheck.print();
-    boat.print();
+
+    if (digitalRead(enableOtaPin) == !otaEnabled) // Restart ESP32 if OTA mode changes
+    {
+      Serial.println("Restarting ESP32...");
+      ESP.restart();
+    }
+
+    unsigned long currentMillis = millis();
+    if (otaEnabled) // Conditionally handle OTA server
+    {
+       server.handleClient();
+       yield();
+  //     // if (!otaHandler.isRunning())
+  //     // {
+  //     //   server.handleClient();
+  //     // }
+  //     // otaHandler.handle();
+  //     // ArduinoOTA.handle();
+    }
+    else
+    {
+      gpsCheck.handle();
+      boat.update();
+      if (currentMillis - lastNMEATime >= 1000) // Send NMEA data every 200ms
+      {
+        lastNMEATime = currentMillis;
+        // Serial.println("Serial1: Sending NMEA data");
+        // outputNMEA();
+        gpsCheck.print();
+        boat.print();
+      }
+    }
   }
 }
 

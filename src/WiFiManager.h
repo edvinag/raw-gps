@@ -18,8 +18,6 @@ public:
     WiFiManager(WifiCredentials* setups, int size) : wifiCredentials(setups), setupCount(size) {}
 
     void setup(const char* mdnsName) {
-        Serial.begin(115200);
-        Serial.println("Booting");
         WiFi.mode(WIFI_STA);
 
         // Scan for networks
@@ -47,6 +45,7 @@ public:
         Serial.print("Connecting to ");
         Serial.println(wifiCredentials[wifiIndex].ssid);
         WiFi.begin(wifiCredentials[wifiIndex].ssid, wifiCredentials[wifiIndex].password);
+        WiFi.setSleep(false); // Keep Wi-Fi always active
         while (WiFi.waitForConnectResult() != WL_CONNECTED) {
             Serial.println("Connection Failed! Rebooting...");
             delay(5000);

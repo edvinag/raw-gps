@@ -7,3 +7,5 @@ src/Secrets.h
 *.der
 *.pem
 src/https/*.*
+temp/*
+Credentials.h

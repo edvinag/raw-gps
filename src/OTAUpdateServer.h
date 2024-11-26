@@ -7,7 +7,9 @@
 class OTAUpdateServer
 {
 public:
-    OTAUpdateServer(WebServer &sharedServer) : server(sharedServer)
+    OTAUpdateServer(WebServer &sharedServer) : server(sharedServer), otaInProgress(false){};
+    
+    void setup()
     {
         // Setup routes
         server.on("/", HTTP_GET, [this]()
@@ -19,14 +21,21 @@ public:
                   {
             server.sendHeader("Connection", "close");
             server.send(200, "text/plain", (Update.hasError()) ? "FAIL" : "OK");
+            delay(1000);
             ESP.restart(); }, [this]()
                   { handleUpload(); });
 
         Serial.println("OTA server routes added");
     }
 
+    bool isOTAInProgress() const
+    {
+        return otaInProgress;
+    }
+
 private:
     WebServer &server; // Reference to the shared WebServer
+    bool otaInProgress; // Flag to indicate OTA update in progress
 
     String style =
         "<style>#file-input,input{width:100%;height:44px;border-radius:4px;margin:10px auto;font-size:15px}"
@@ -40,7 +49,7 @@ private:
         "<script src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>"
         "<form method='POST' action='#' enctype='multipart/form-data' id='upload_form'>"
         "<input type='file' name='update' id='file' accept='.bin' onchange='sub(this)' style='display:none'>"
-        "<label id='file-input' for='file'>   Choose .bin file to update...</label>"
+        "<label id='file-input' for='file'>Choose .bin file to update the Raw GPS...</label>"
         "<input type='submit' class='btn' value='Update'>"
         "<br><br>"
         "<div id='prg'></div>"
@@ -86,6 +95,7 @@ private:
         HTTPUpload &upload = server.upload();
         if (upload.status == UPLOAD_FILE_START)
         {
+            otaInProgress = true; // Set flag to indicate OTA has started
             Serial.printf("Update: %s\n", upload.filename.c_str());
             if (!Update.begin(UPDATE_SIZE_UNKNOWN))
             {
@@ -101,6 +111,7 @@ private:
         }
         else if (upload.status == UPLOAD_FILE_END)
         {
+            otaInProgress = false; // Reset flag as OTA is ending
             if (Update.end(true))
             {
                 Serial.printf("Update Success: %u\nRebooting...\n", upload.totalSize);
