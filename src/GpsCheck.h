@@ -6,7 +6,7 @@ class GpsCheck
 {
 public:
     GpsCheck() : tinyGPS(), lastTime(0), lastHeading(0) {
-        Serial2.begin(9600, SERIAL_8N1, 12, 13);
+        Serial2.begin(115200, SERIAL_8N1, 12, 13);
     }
 
     void handle()

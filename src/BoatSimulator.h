@@ -4,22 +4,25 @@
 #include <Arduino.h>
 #include <math.h>
 
-class BoatSimulator {
+class BoatSimulator
+{
 private:
     // Pin definitions
     const int rudderRightPin = 18;
     const int rudderLeftPin = 19;
 
     // Dynamic constants
-    const float constantSpeed = 4.11556;  // Constant speed in m/s (8 knots)
-    const float maxTurnRate = 0.1;        // Max turning rate in radians per second
-    const float inertia = 0.95;           // Rate at which turning adjusts to rudder
+    const float constantSpeed = 4.11556; // Constant speed in m/s (8 knots)
+    const float maxTurnRate = 0.5;       // Max turning rate in radians per second
+    const float inertia = 0.95;          // Rate at which turning adjusts to rudder
 
     // Earth constants
     const float metersPerDegreeLat = 111320.0; // Approximate meters per degree latitude
     float metersPerDegreeLon;
 
     // Boat state variables
+    float initialLat;
+    float initialLon;
     float latitude;
     float longitude;
     float heading;
@@ -31,7 +34,7 @@ private:
 
     // Update interval
     unsigned long lastUpdateTime;
-    const unsigned long updateInterval = 50; // 50 ms
+    const unsigned long updateInterval = 200; // 50 ms
 
     // Helper functions
     void convertToLatLon();
@@ -53,52 +56,60 @@ public:
 // Implementation
 
 BoatSimulator::BoatSimulator(float initialLat, float initialLon)
-    : latitude(initialLat), longitude(initialLon), heading(PI / 4.0), angularVelocity(0.0),
+    : initialLat(initialLat), initialLon(initialLon), heading(PI / 4.0), angularVelocity(0.0),
       xPosition(0.0), yPosition(0.0), lastUpdateTime(0) {}
 
-void BoatSimulator::setup() {
+void BoatSimulator::setup()
+{
     lastUpdateTime = millis();
-    Serial1.begin(9600, SERIAL_8N1, 16, 17);
+    Serial1.begin(115200, SERIAL_8N1, 16, 17);
     pinMode(rudderRightPin, INPUT_PULLUP);
     pinMode(rudderLeftPin, INPUT_PULLUP);
-    Serial.begin(115200);
 }
 
-void BoatSimulator::update() {
+void BoatSimulator::update()
+{
     unsigned long currentTime = millis();
-
-    if (digitalRead(rudderRightPin) == LOW) {
-        angularVelocity += maxTurnRate * (1 - inertia);
-    } else if (digitalRead(rudderLeftPin) == LOW) {
-        angularVelocity -= maxTurnRate * (1 - inertia);
-    }
-
-    angularVelocity *= inertia;
-
-    heading += angularVelocity * updateInterval / 1000.0;
-    if (heading < 0) heading += 2 * PI;
-    if (heading >= 2 * PI) heading -= 2 * PI;
-
-    metersPerDegreeLon = metersPerDegreeLat * cos(latitude * PI / 180.0);
-
-    float deltaX = constantSpeed * sin(heading) * updateInterval / 1000.0;
-    float deltaY = constantSpeed * cos(heading) * updateInterval / 1000.0;
-    xPosition += deltaX;
-    yPosition += deltaY;
-
-    if (currentTime - lastUpdateTime >= updateInterval) {
+    if (currentTime - lastUpdateTime >= updateInterval)
+    {
         lastUpdateTime = currentTime;
+        if (digitalRead(rudderRightPin) == HIGH)
+        {
+            angularVelocity += maxTurnRate * (1 - inertia);
+        }
+        else if (digitalRead(rudderLeftPin) == HIGH)
+        {
+            angularVelocity -= maxTurnRate * (1 - inertia);
+        }
+
+        angularVelocity *= inertia;
+
+        heading += angularVelocity * updateInterval / 1000.0;
+        if (heading < 0)
+            heading += 2 * PI;
+        if (heading >= 2 * PI)
+            heading -= 2 * PI;
+
+        metersPerDegreeLon = metersPerDegreeLat * cos(latitude * PI / 180.0);
+
+        float deltaX = constantSpeed * sin(heading) * updateInterval / 1000.0;
+        float deltaY = constantSpeed * cos(heading) * updateInterval / 1000.0;
+        xPosition += deltaX;
+        yPosition += deltaY;
+
         convertToLatLon();
         outputNMEA();
     }
 }
 
-void BoatSimulator::convertToLatLon() {
-    latitude += yPosition / metersPerDegreeLat;
-    longitude += xPosition / metersPerDegreeLon;
+void BoatSimulator::convertToLatLon()
+{
+    latitude = initialLat + yPosition / metersPerDegreeLat;
+    longitude = initialLon + xPosition / metersPerDegreeLon;
 }
 
-String BoatSimulator::convertToNMEA(double decimalCoord, String type) {
+String BoatSimulator::convertToNMEA(double decimalCoord, String type)
+{
     char hemisphere = (type == "lat") ? ((decimalCoord >= 0) ? 'N' : 'S') : ((decimalCoord >= 0) ? 'E' : 'W');
     decimalCoord = abs(decimalCoord);
     int degrees = (type == "lat") ? int(decimalCoord) : int(decimalCoord);
@@ -109,35 +120,25 @@ String BoatSimulator::convertToNMEA(double decimalCoord, String type) {
     return String(nmeaCoord);
 }
 
-void BoatSimulator::outputNMEA() {
+void BoatSimulator::outputNMEA()
+{
     float headingDegrees = heading * 180.0 / PI;
     float speedKnots = constantSpeed * 1.94384;
     String timestamp = getTimestamp();
 
     String nmeaLatitude = convertToNMEA(latitude, "lat");
     String nmeaLongitude = convertToNMEA(longitude, "lon");
-    
+
     // Construct GPRMC sentence
     String rmc = "$GPRMC," + timestamp + ",A," + nmeaLatitude + "," + nmeaLongitude + "," +
                  String(speedKnots, 1) + "," + String(headingDegrees, 2) + ",230924,,,A*";
 
     rmc += calculateChecksum(rmc); // Append checksum
     Serial1.print(rmc + "\r\n");   // Send GPRMC sentence
-    // Serial.println(rmc);           // Optionally log to Serial
-
-    //Construct a GGA sentence
-    String gga = "$GPGGA," + timestamp + "," + nmeaLatitude + "," + nmeaLongitude + ",1,08,0.9,545.4,M,46.9,M,,*";
-    gga += calculateChecksum(gga);
-    Serial1.print(gga + "\r\n");
-
-    // //Construct a VTG sentence
-    // String vtg = "$GPVTG," + String(headingDegrees, 2) + ",T,,M," + String(speedKnots, 1) + ",N,,K*";
-    // vtg += calculateChecksum(vtg);
-    // Serial1.print(vtg + "\r\n");
-    // Serial.println(vtg);
 }
 
-String BoatSimulator::getTimestamp() {
+String BoatSimulator::getTimestamp()
+{
     unsigned long currentMillis = millis();
     unsigned long totalSeconds = currentMillis / 1000;
     unsigned long hours = (totalSeconds / 3600) % 24;
@@ -149,23 +150,27 @@ String BoatSimulator::getTimestamp() {
     return String(timestamp);
 }
 
-String BoatSimulator::calculateChecksum(String sentence) {
+String BoatSimulator::calculateChecksum(String sentence)
+{
     int startIdx = sentence.indexOf('$');
     int endIdx = sentence.indexOf('*');
-    if (startIdx == -1 || endIdx == -1 || endIdx <= startIdx){
+    if (startIdx == -1 || endIdx == -1 || endIdx <= startIdx)
+    {
         Serial.println("Invalid sentence format of: " + sentence);
         return "";
     }
 
     byte checksum = 0;
-    for (int i = startIdx + 1; i < endIdx; i++) checksum ^= sentence[i];
+    for (int i = startIdx + 1; i < endIdx; i++)
+        checksum ^= sentence[i];
 
     char checksumStr[3];
     sprintf(checksumStr, "%02X", checksum);
     return String(checksumStr);
 }
 
-void BoatSimulator::print() {
+void BoatSimulator::print()
+{
     String output = "";
     output += "Latitude: " + String(latitude, 6) + "\n";
     output += "Longitude: " + String(longitude, 6) + "\n";
