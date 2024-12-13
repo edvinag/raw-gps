@@ -6,6 +6,10 @@
 #include "BoatSimulator.h"
 #include "GpsCheck.h"
 
+#include "BluetoothSerial.h" // Include Bluetooth library
+
+BluetoothSerial SerialBT;
+
 // OTA server configuration
 const char *host = "esp32-raw-gps";
 
@@ -50,6 +54,17 @@ void setup()
   {
     Serial.println("Enabling NMEA mode...");
     boat.setup();
+    if (digitalRead(enableRealGPS) == HIGH)
+    {
+      SerialBT.begin("ESP32_GPS"); 
+      if (SerialBT.connect("Garmin GLO 2 #38ad1")) { // Replace with your GPS module's name
+        Serial.println("Connected to GPS module!");
+      } else {
+        Serial.println("Failed to connect. Make sure the GPS module is on.");
+        while (1); // Stop the program
+      }
+    }
+
   }
 }
 
@@ -72,7 +87,15 @@ void loop()
   {
     if (digitalRead(enableRealGPS) == HIGH)
     {
-      Serial.println("Printing GPS data...");
+        if (SerialBT.available()) { // Check if GPS data is available
+          String gpsData = "";
+          while (SerialBT.available()) {
+            char c = SerialBT.read(); // Read a character from GPS
+            gpsData += c;             // Append to string
+          }
+          Serial.println("GPS Data: " + gpsData); // Print GPS data
+        }
+        delay(50);
     }
     else
     {
