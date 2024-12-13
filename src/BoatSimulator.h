@@ -13,8 +13,8 @@ private:
 
     // Dynamic constants
     const float constantSpeed = 4.11556; // Constant speed in m/s (8 knots)
-    const float maxTurnRate = 0.5;       // Max turning rate in radians per second
-    const float inertia = 0.95;          // Rate at which turning adjusts to rudder
+    const float maxTurnRate = 0.3;       // Max turning rate in radians per second
+    const float inertia = 0.98;          // Rate at which turning adjusts to rudder
 
     // Earth constants
     const float metersPerDegreeLat = 111320.0; // Approximate meters per degree latitude

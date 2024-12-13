@@ -11,6 +11,7 @@ const char *host = "esp32-raw-gps";
 
 // Define GPIO pin to monitor
 const int enableOtaPin = 25; // Replace with the actual pin you are using
+const int enableRealGPS = 26; // Replace with the actual pin you are using
 
 unsigned long lastNMEATime = 0;
 
@@ -31,6 +32,7 @@ void setup()
 
   // // Setup GPIO pin mode
   pinMode(enableOtaPin, INPUT);
+  pinMode(enableRealGPS, INPUT);
 
   if (digitalRead(enableOtaPin) == HIGH)
   {
@@ -68,13 +70,19 @@ void loop()
   }
   else
   {
-    boat.update();
-
-    unsigned long currentMillis = millis();
-    if (currentMillis - lastNMEATime >= 1000) // Send NMEA data every 200ms
+    if (digitalRead(enableRealGPS) == HIGH)
     {
-      lastNMEATime = currentMillis;
-      boat.print();
+      Serial.println("Printing GPS data...");
+    }
+    else
+    {
+      boat.update();
+      unsigned long currentMillis = millis();
+      if (currentMillis - lastNMEATime >= 1000) // Send NMEA data every 200ms
+      {
+        lastNMEATime = currentMillis;
+        boat.print();
+      }
     }
   }
 }
