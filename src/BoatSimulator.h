@@ -34,7 +34,7 @@ private:
 
     // Update interval
     unsigned long lastUpdateTime;
-    const unsigned long updateInterval = 200; // 50 ms
+    const unsigned long updateInterval = 200;
 
     // Helper functions
     void convertToLatLon();

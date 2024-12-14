@@ -1,96 +1,56 @@
 #include <Arduino.h>
-#include "WiFiManager.h"
-#include "OTAUpdateServer.h"
-#include <WebServer.h>
-#include <Credentials.h>
 #include "BoatSimulator.h"
-#include "GpsCheck.h"
 #include "BLEconnect.h"
 
-// OTA server configuration
-const char *host = "esp32-raw-gps";
-
-// Define GPIO pin to monitor
-const int enableOtaPin = 25; // Replace with the actual pin you are using
-const int enableRealGPS = 26; // Replace with the actual pin you are using
+#define ENABLEREALGPS 26
+#define REDLED 2
 
 unsigned long lastNMEATime = 0;
 
-// Create objects
-WiFiManager wifiManager(wifiCredentials, sizeOfWifiCredentials);
-WebServer server(80); // Shared WebServer object
-OTAUpdateServer otaUpdateServer(server);
-GpsCheck gpsCheck;
-BoatSimulator boat(57.57367, 11.92692); // San Francisco coordinates
-
-bool otaEnabled = false; // Track OTA state
+BoatSimulator boat(57.57367, 11.92692); // Gothenburg, Sweden
 
 void setup()
 {
   Serial.begin(115200);
-  pinMode(2, OUTPUT);
-  digitalWrite(2, HIGH); // Turn the LED on
+  
+  pinMode(REDLED, OUTPUT);
+  pinMode(ENABLEREALGPS, INPUT);
 
-  // // Setup GPIO pin mode
-  pinMode(enableOtaPin, INPUT);
-  pinMode(enableRealGPS, INPUT);
+  digitalWrite(REDLED, HIGH);
 
-  if (digitalRead(enableOtaPin) == HIGH)
+  Serial.println("Enabling NMEA mode...");
+  boat.setup();
+  if (digitalRead(ENABLEREALGPS) == HIGH)
   {
-    Serial.println("Enabling OTA mode...");
-    // Setup WiFi
-    wifiManager.setup(host);
-    otaUpdateServer.setup();
-
-    // Start the shared server
-    server.begin();
-    otaEnabled = true;
-    Serial.println("Enabled OTA mode");
-  }
-  else
-  {
-    Serial.println("Enabling NMEA mode...");
-    boat.setup();
-    if (digitalRead(enableRealGPS) == HIGH)
-    {
-      BLEsetup();
-    }
-
+    BLEsetup();
   }
 }
 
 void loop()
 {
-  digitalWrite(2, LOW); // Turn the LED on
+  digitalWrite(REDLED, LOW);
 
-  if (digitalRead(enableOtaPin) == !otaEnabled) // Restart ESP32 if OTA mode changes
+  if (digitalRead(ENABLEREALGPS) == HIGH)
   {
-    Serial.println("Restarting ESP32...");
-    ESP.restart();
-  }
-
-  if (otaEnabled) // Conditionally handle OTA server
-  {
-      server.handleClient();
-      yield();
-  }
-  else
-  {
-    if (digitalRead(enableRealGPS) == HIGH)
+    if(!SerialBT.isReady())
     {
-      // Serial.println("Real GPS mode enabled");
-      BLEloop();
-      delay(200);
+      Serial.println("BLE not ready, setting up...");
+      BLEsetup();
     }
     else
     {
-      boat.update();
-      unsigned long currentMillis = millis();
-      if (currentMillis - lastNMEATime >= 1000) // Send NMEA data every 200ms
-      {
-        lastNMEATime = currentMillis;
-        boat.print();
-      }
+      BLEloop();
+      delay(200);
+    }
+  }
+  else
+  {
+    boat.update();
+    unsigned long currentMillis = millis();
+    if (currentMillis - lastNMEATime >= 1000) // Print NMEA sentence every second to Serial Monitor 
+    {
+      lastNMEATime = currentMillis;
+      boat.print();
     }
   }
 }

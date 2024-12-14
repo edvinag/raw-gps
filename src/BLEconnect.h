@@ -39,7 +39,6 @@ esp_spp_role_t role = ESP_SPP_ROLE_SLAVE;  // or ESP_SPP_ROLE_MASTER
 
 void BLEsetup()
 {
-  Serial.begin(115200);
   if (!SerialBT.begin("ESP32test", true))
   {
     Serial.println("========== serialBT failed!");
