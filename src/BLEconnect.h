@@ -28,95 +28,80 @@
 
 BluetoothSerial SerialBT;
 
-// Enter the name your GPS reports
-String MyGPS = "Name: Garmin GLO 2 #38ad1";
-
-#define BT_DISCOVER_TIME 10000
 esp_spp_sec_t sec_mask = ESP_SPP_SEC_NONE; // or ESP_SPP_SEC_ENCRYPT|ESP_SPP_SEC_AUTHENTICATE to request pincode confirmation
 esp_spp_role_t role = ESP_SPP_ROLE_SLAVE;  // or ESP_SPP_ROLE_MASTER
+BTAddress addr("14:13:0b:e3:8a:d1");
+int channel = 1;
 
-// std::map<BTAddress, BTAdvertisedDeviceSet> btDeviceList;
+String latestRMC = "";
+String latestGGA = "";
+unsigned long lastSentTime = 0;         // To track when to send the messages
+const unsigned long sendInterval = 250; // Interval in milliseconds
 
 void BLEsetup()
 {
-  if (!SerialBT.begin("ESP32test", true))
+  if (!SerialBT.begin("ESP32-Raw-GPS", true))
   {
-    Serial.println("========== serialBT failed!");
+    Serial.println("Failed to initialize SerialBT");
     abort();
   }
 
-  Serial.println("Starting discoverAsync...");
-  BTScanResults *btDeviceList = SerialBT.getScanResults(); // maybe accessing from different threads!
-  if (SerialBT.discoverAsync([](BTAdvertisedDevice *pDevice)
-                             {
-      // BTAdvertisedDeviceSet*set = reinterpret_cast<BTAdvertisedDeviceSet*>(pDevice);
-      // btDeviceList[pDevice->getAddress()] = * set;
-      Serial.printf(">>>>>>>>>>>Found a new device asynchronously: %s\n", pDevice->toString().c_str());
-      //Test to see that correct device is found, else reset and try again
-      String teststring= pDevice->toString().c_str();
-      if(!teststring.startsWith(MyGPS))ESP.restart(); }))
-  {
-    delay(BT_DISCOVER_TIME);
-    Serial.print("Stopping discoverAsync... ");
-    SerialBT.discoverAsyncStop();
-    Serial.println("discoverAsync stopped");
-    delay(1000);
-    if (btDeviceList->getCount() > 0)
-    {
-      BTAddress addr;
-      int channel = 0;
-      Serial.println("Found devices:");
-      for (int i = 0; i < btDeviceList->getCount(); i++)
-      {
-        BTAdvertisedDevice *device = btDeviceList->getDevice(i);
-        Serial.printf(" ----- %s  %s %d\n", device->getAddress().toString().c_str(), device->getName().c_str(), device->getRSSI());
-        std::map<int, std::string> channels = SerialBT.getChannels(device->getAddress());
-        Serial.printf("scanned for services, found %d\n", channels.size());
-        for (auto const &entry : channels)
-        {
-          Serial.printf("     channel %d (%s)\n", entry.first, entry.second.c_str());
-        }
-        if (channels.size() > 0)
-        {
-          addr = device->getAddress();
-          channel = channels.begin()->first;
-        }
-      }
-      if (addr)
-      {
-        Serial.printf("connecting to %s - %d\n", addr.toString().c_str(), channel);
+  Serial.println("Connecting to Garmin GLO 2 #38ad1");
+  SerialBT.connect(addr, channel, sec_mask, role);
 
-        SerialBT.connect(addr, channel, sec_mask, role);
-      }
-    }
-    else
-    {
-      Serial.println("Didn't find any devices");
-      ESP.restart();
-    }
+  if (SerialBT.connected())
+  {
+    Serial.println("Connected to Garmin GLO 2 #38ad1");
   }
   else
   {
-    Serial.println("Error on discoverAsync f.e. not workin after a \"connect\"");
+    Serial.println("Failed to connect to Garmin GLO 2 #38ad1, restarting...");
     ESP.restart();
   }
 }
 
 void BLEloop()
 {
+  static String currentLine = ""; // Buffer for the current NMEA line
+
   if (!SerialBT.isClosed() && SerialBT.connected())
   {
-    if (SerialBT.available())
+    while (SerialBT.available())
     {
-      while (SerialBT.available())
-      {
-        int c = SerialBT.read();
-        if (c >= 0)
+      char c = (char)SerialBT.read();
+      Serial.print(c); // Print the received character to the Serial Monitor
+
+      if (c == '\n' || c == '\r')
+      { // End of an NMEA line
+        if (currentLine.startsWith("$GPRMC"))
         {
-          Serial.print((char)c);
-          Serial1.print((char)c);
+          latestRMC = currentLine; // Save the latest RMC message
         }
+        else if (currentLine.startsWith("$GPGGA"))
+        {
+          latestGGA = currentLine; // Save the latest GGA message
+        }
+        currentLine = ""; // Clear the buffer for the next line
+      }
+      else
+      {
+        currentLine += c; // Append character to the current line
       }
     }
+  }
+
+  // Check if it's time to send the latest messages
+  unsigned long currentTime = millis();
+  if (currentTime - lastSentTime >= sendInterval)
+  {
+    if (!latestRMC.isEmpty())
+    {
+      Serial1.println(latestRMC); // Send the latest RMC message
+    }
+    if (!latestGGA.isEmpty())
+    {
+      Serial1.println(latestGGA); // Send the latest GGA message
+    }
+    lastSentTime = currentTime; // Update the last sent time
   }
 }
