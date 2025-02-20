@@ -118,7 +118,12 @@ void BoatSimulator::outputRudderPosition()
     // Map angular velocity to rudder position (-30 to 30 degrees)
     rudderPosition = map(angularVelocity * 100, -maxTurnRate * 100, maxTurnRate * 100, -30, 30);
     rudderPosition = constrain(rudderPosition, -30, 30);
-    dacWrite(rudderOutputPin, map(rudderPosition, -30, 30, 0, 255)); // Output PWM signal
+    
+    // Apply custom linear mapping ensuring center is 100, min is 11, and max is 161
+    int dacValue = 2.5 * rudderPosition + 100;
+    
+    // Output to DAC
+    dacWrite(rudderOutputPin, dacValue);    
 }
 
 String BoatSimulator::convertToNMEA(double decimalCoord, String type)
