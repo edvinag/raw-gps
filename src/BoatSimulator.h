@@ -10,11 +10,13 @@ private:
     // Pin definitions
     const int rudderRightPin = 18;
     const int rudderLeftPin = 19;
+    const int rudderOutputPin = 25; // New output pin for rudder position
 
     // Dynamic constants
     const float constantSpeed = 4.11556; // Constant speed in m/s (8 knots)
     const float maxTurnRate = 0.3;       // Max turning rate in radians per second
     const float inertia = 0.98;          // Rate at which turning adjusts to rudder
+    int rudderPosition = 0;
 
     // Earth constants
     const float metersPerDegreeLat = 111320.0; // Approximate meters per degree latitude
@@ -41,6 +43,7 @@ private:
     String calculateChecksum(String sentence);
     String getTimestamp();
     String convertToNMEA(double decimalCoord, String type);
+    void outputRudderPosition(); // New function to output rudder position
 
 public:
     // Constructor
@@ -65,6 +68,7 @@ void BoatSimulator::setup()
     Serial1.begin(115200, SERIAL_8N1, 16, 17);
     pinMode(rudderRightPin, INPUT_PULLUP);
     pinMode(rudderLeftPin, INPUT_PULLUP);
+    pinMode(rudderOutputPin, OUTPUT); // Set rudder output pin
 }
 
 void BoatSimulator::update()
@@ -99,6 +103,7 @@ void BoatSimulator::update()
 
         convertToLatLon();
         outputNMEA();
+        outputRudderPosition(); // Update rudder position output
     }
 }
 
@@ -106,6 +111,14 @@ void BoatSimulator::convertToLatLon()
 {
     latitude = initialLat + yPosition / metersPerDegreeLat;
     longitude = initialLon + xPosition / metersPerDegreeLon;
+}
+
+void BoatSimulator::outputRudderPosition()
+{
+    // Map angular velocity to rudder position (-30 to 30 degrees)
+    rudderPosition = map(angularVelocity * 100, -maxTurnRate * 100, maxTurnRate * 100, -30, 30);
+    rudderPosition = constrain(rudderPosition, -30, 30);
+    dacWrite(rudderOutputPin, map(rudderPosition, -30, 30, 0, 255)); // Output PWM signal
 }
 
 String BoatSimulator::convertToNMEA(double decimalCoord, String type)
@@ -176,6 +189,7 @@ void BoatSimulator::print()
     output += "Longitude: " + String(longitude, 6) + "\n";
     output += "Heading: " + String(heading, 6) + "\n";
     output += "Angular Velocity: " + String(angularVelocity, 6) + "\n";
+    output += "Rudder Position: " + String(rudderPosition) + "\n";
     output += "X Position: " + String(xPosition, 6) + "\n";
     output += "Y Position: " + String(yPosition, 6) + "\n";
     Serial.println(output);
